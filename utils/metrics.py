@@ -17,7 +17,7 @@ def _topk(arr: np.ndarray, k: int) -> np.ndarray:
     """
     return np.argsort(arr)[:, -k:][:, ::-1]
 
-def map_at_k(actual: np.ndarray, pred: np.ndarray, top_k: int) -> float:
+def map_at_k(actual: np.ndarray, pred: np.ndarray, top_k: int, is_score=False) -> float:
     r"""Mean average precision at k.
     Parameters
     ----------
@@ -31,13 +31,20 @@ def map_at_k(actual: np.ndarray, pred: np.ndarray, top_k: int) -> float:
     float
         Mean average precision at k
     """
-    if not _assert_same_dimension(actual, pred):
-        raise AssertionError("Two input matrices should have same dimension.")
+    if is_score:
+        if not _assert_same_dimension(actual, pred):
+            raise AssertionError("Two input matrices should have same dimension.")
+    else:
+        if len(actual) != len(pred):
+            raise AssertionError("Two input matrices should have same length.")
 
     map_ = 0
 
     num_users = len(pred)
-    top_k_items = _topk(arr=pred, k=top_k)
+    if is_score:
+        top_k_items = _topk(arr=pred, k=top_k)
+    else:
+        top_k_items = pred[:, :top_k]
     
     for i in tqdm(range(num_users)):
         actual_item = set(actual[i].nonzero()[0])
