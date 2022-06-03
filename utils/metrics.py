@@ -1,6 +1,7 @@
 import numpy as np
 from tqdm.auto import tqdm
 
+
 def _topk(arr: np.ndarray, k: int) -> np.ndarray:
     r"""Returns indices of k largest element of the given input matrix along
     the horizontal axis.
@@ -17,7 +18,10 @@ def _topk(arr: np.ndarray, k: int) -> np.ndarray:
     """
     return np.argsort(arr)[:, -k:][:, ::-1]
 
-def map_at_k(actual: np.ndarray, pred: np.ndarray, top_k: int, is_score=False) -> float:
+
+def map_at_k(
+    actual: np.ndarray, pred: np.ndarray, top_k: int, is_score=False
+) -> float:
     r"""Mean average precision at k.
     Parameters
     ----------
@@ -33,7 +37,9 @@ def map_at_k(actual: np.ndarray, pred: np.ndarray, top_k: int, is_score=False) -
     """
     if is_score:
         if not _assert_same_dimension(actual, pred):
-            raise AssertionError("Two input matrices should have same dimension.")
+            raise AssertionError(
+                "Two input matrices should have same dimension."
+            )
     else:
         if len(actual) != len(pred):
             raise AssertionError("Two input matrices should have same length.")
@@ -45,13 +51,13 @@ def map_at_k(actual: np.ndarray, pred: np.ndarray, top_k: int, is_score=False) -
         top_k_items = _topk(arr=pred, k=top_k)
     else:
         top_k_items = pred[:, :top_k]
-    
+
     for i in tqdm(range(num_users)):
         actual_item = set(actual[i].nonzero()[0])
         pred_item = top_k_items[i]
 
         map_ += _ap_at_k(actual=actual_item, pred=pred_item, top_k=top_k)
-        
+
     return map_ / num_users
 
 
@@ -84,6 +90,7 @@ def _ap_at_k(actual: np.array, pred: np.array, top_k: int) -> float:
             p += cnt / (idx + 1)
 
     return 0.0 if cnt == 0 else p / min(cnt, len(actual))
+
 
 def _assert_same_dimension(actual: np.ndarray, pred: np.ndarray) -> bool:
     r"""Check the actual matrix and the prediction have same dimension.
