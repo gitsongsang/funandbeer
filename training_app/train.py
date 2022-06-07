@@ -1,12 +1,13 @@
+import os
+import pickle
+import time
+
 import fire
 import hypertune
-from implicit.als import AlternatingLeastSquares
 import numpy as np
-import os
 import pandas as pd
-import pickle
+from implicit.als import AlternatingLeastSquares
 from scipy.sparse import csr_matrix
-import time
 
 # Set environments
 REGION = "us-east1"
@@ -22,19 +23,24 @@ valid = pd.read_parquet(os.path.join(DATA_ROOT, "valid.parquet"))
 most_common_beers = pd.read_parquet(
     os.path.join(DATA_ROOT, "most_common_beers.parquet")
 )
-user_mapper = pd.read_parquet(os.path.join(DATA_ROOT, "user_mapper.parquet"))["idx"].to_dict()
-item_mapper = pd.read_parquet(os.path.join(DATA_ROOT, "item_mapper.parquet"))["idx"].to_dict()
+user_mapper = pd.read_parquet(os.path.join(DATA_ROOT, "user_mapper.parquet"))[
+    "idx"
+].to_dict()
+item_mapper = pd.read_parquet(os.path.join(DATA_ROOT, "item_mapper.parquet"))[
+    "idx"
+].to_dict()
 
 # Preprocess
 print("Preprocessing...")
-train_mat = np.zeros((len(user_mapper), len(item_mapper)))
-valid_mat = np.zeros((len(user_mapper), len(item_mapper)))
+num_users = len(user_mappers)
+num_items = len(item_mappers)
 
-for _, user, item, rating in train.itertuples():
-    train_mat[user, item] = 1
-
-for _, user, item, rating in valid.itertuples():
-    valid_mat[user, item] = 1
+train_mat = _fill_rating_matrix(
+    _create_rating_matrix(num_users, num_items), train
+)
+valid_mat = _fill_rating_matrix(
+    _create_rating_matrix(num_users, num_items), train
+)
 
 baseline_topk = most_common_beers[:10]["beer_name"].tolist()
 valid_users = np.where(valid_mat.sum(axis=1) > 0)[0]
@@ -44,19 +50,61 @@ train_csr = csr_matrix(train_mat)
 valid_csr = csr_matrix(valid_mat)
 
 
-def _topk(arr: np.ndarray, k: int) -> np.ndarray:
-    r"""Returns indices of k largest element of the given input matrix along
-    the horizontal axis.
+def _create_rating_matrix(num_users: int, num_items: int) -> np.ndarray:
+    r"""Create rating matrix with U x I dimension.
+    U is the number of users and I is the number of items.
+
     Parameters
     ----------
-    input : np.ndarray
-        _description_
-    k : int
-        _description_
+    num_users : int
+        The number of users
+    num_items : int
+        The number of items
+
     Returns
     -------
     np.ndarray
-        _description_
+        Rating matrix with zeros
+    """
+
+    return np.zeros((num_users, num_items))
+
+
+def _fill_rating_matrix(matrix: np.ndarray, df: pd.DataFrame) -> np.ndarray:
+    r"""Fill a rating matrix.
+
+    Parameters
+    ----------
+    matrix : np.ndarray
+        A rating matrix
+    df : pd.DataFrame
+        A data frame with the form of (user_id, item_id, rating)
+
+    Returns
+    -------
+    np.ndarray
+        Rating matrix with implicit feedback
+    """
+    for _, user, item, rating in df.itertuples():
+        matrix[user, item] = 1
+
+    return matrix
+
+
+def _topk(arr: np.ndarray, k: int) -> np.ndarray:
+    r"""Returns indices of k largest element of the given input matrix along
+    the horizontal axis.
+
+    Parameters
+    ----------
+    arr : np.ndarray
+        An input array
+    k : int
+
+    Returns
+    -------
+    np.ndarray
+        Indices of k largest elements
     """
     return np.argsort(arr)[:, -k:][:, ::-1]
 
@@ -65,6 +113,7 @@ def map_at_k(
     actual: np.ndarray, pred: np.ndarray, top_k: int, is_score=False
 ) -> float:
     r"""Mean average precision at k.
+
     Parameters
     ----------
     actual : np.ndarray
@@ -72,6 +121,7 @@ def map_at_k(
     pred : np.ndarray
         A matrix with predictions.
     top_k : int
+
     Returns
     -------
     float
@@ -105,6 +155,7 @@ def map_at_k(
 
 def _ap_at_k(actual: np.array, pred: np.array, top_k: int) -> float:
     r"""Avearge precision at k
+
     Parameters
     ----------
     actual : np.array
@@ -112,6 +163,7 @@ def _ap_at_k(actual: np.array, pred: np.array, top_k: int) -> float:
     pred : np.array
         A list of predicted items
     top_k : int
+
     Returns
     -------
     float
@@ -136,12 +188,14 @@ def _ap_at_k(actual: np.array, pred: np.array, top_k: int) -> float:
 
 def _assert_same_dimension(actual: np.ndarray, pred: np.ndarray) -> bool:
     r"""Check the actual matrix and the prediction have same dimension.
+
     Parameters
     ----------
     actual : np.ndarray
         Actual values
     pred : np.ndarray
         Predicted values
+
     Returns
     -------
     bool
@@ -155,6 +209,21 @@ def train(
     iterations: int,
     is_tune: bool = True,
 ) -> None:
+    r"""A helper function to train a matrix factorization model.
+
+    Parameters
+    ----------
+    factors : int
+        The dimension of latent spaces
+    regularization : float
+        The strength of L2 regularization
+    iterations : int
+        The number of iterations
+    is_tune : bool, by default True
+        If True is passed, a job for hyperparameter tuning via Vertex AI is triggered.
+        When the job is not triggered, the trained model saved in the desired path.
+    """
+
     print("Model is training...")
     model = AlternatingLeastSquares(
         factors=factors,
@@ -198,6 +267,29 @@ def predict(
     popular_items: list,
     top_k: int,
 ) -> np.ndarray:
+    r"""Make recommendations for all users.
+    Items which already reviewed by each user are removed from the recommendations.
+    Note that the most popular items are provided to users that does not appear in training data.
+    Those users have zero scores so they cannot get appropriate recommendations.
+
+    Parameters
+    ----------
+    user_ids : np.ndarray
+        The list of user ids
+    train_mat : csr_matrix
+        A sparse matrix which used for training
+    model : AlternatingLeastSquares
+        A trained model
+    popular_items : list
+        A list of the most common/popular items based on training data.
+    top_k : int
+
+    Returns
+    -------
+    np.ndarray
+        Recommendations for each user
+
+    """
     # Make recommendations based on the model
     rec = model.recommend(
         user_ids, train_mat[user_ids], N=top_k, filter_already_liked_items=True
