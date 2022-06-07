@@ -14,17 +14,6 @@ PROJECT_ID = "qwiklabs-asl-04-5e165f533cac"
 ARTIFACT_STORE = f"gs://{PROJECT_ID}-beer-artifact-store"
 DATA_ROOT = os.path.join(ARTIFACT_STORE, "data")
 JOB_DIR_ROOT = os.path.join(ARTIFACT_STORE, "jobs")
-API_ENDPOINT = f"{REGION}-aiplatform.googleapis.com"
-TIMESTAMP = time.strftime("%Y%m%d_%H%M%S")
-JOB_NAME = f"beer_tuning_{TIMESTAMP}"
-JOB_DIR = os.path.join(JOB_DIR_ROOT, JOB_NAME)
-MACHINE_TYPE="n1-standard-16"
-
-# os.environ["JOB_DIR_ROOT"] = JOB_DIR_ROOT
-# os.environ["PROJECT_ID"] = PROJECT_ID
-# os.environ["REGION"] = REGION
-# os.environ["JOB_NAME"] = JOB_NAME
-# os.environ["JOB_DIR"] = JOB_DIR
 
 # Load matrices and files
 print("Load files...")
