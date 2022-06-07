@@ -3,26 +3,28 @@ studySpec:
   - metricId: map_at_10
     goal: MAXIMIZE
   parameters:
-  - parameterId: iterations
+  - parameterId: factors
     discreteValueSpec:
       values:
-      - 10
-      - 20
+      - 16
+      - 32
+      - 64
+      - 128
+  - parameterId: iterations
+    integerValueSpec:
+      minValue: 10
+      maxValue: 100
+    scaleType: UNIT_LINEAR_SCALE
   - parameterId: regularization
     doubleValueSpec:
       minValue: 1.0e-4
       maxValue: 1.0e-1
-    scaleType: UNIT_LINEAR_SCALE
+    scaleType: UNIT_LOG_SCALE
   algorithm: ALGORITHM_UNSPECIFIED # results in Bayesian optimization
 trialJobSpec:
   workerPoolSpecs:  
   - machineSpec:
-      machineType: n1-standard-4
+      machineType: n1-standard-16
     replicaCount: 1
     containerSpec:
       imageUri: gcr.io/qwiklabs-asl-04-5e165f533cac/trainer_image
-      args:
-      - --job_dir=$JOB_DIR
-      - --training_dataset_path=$TRAINING_FILE_PATH
-      - --validation_dataset_path=$VALIDATION_FILE_PATH
-      - --hptune

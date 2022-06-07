@@ -9,8 +9,8 @@ from scipy.sparse import csr_matrix
 import time
 
 # Set environments
-REGION = "us-central1"
-PROJECT_ID = os.popen("gcloud config get-value core/project").read().strip()
+REGION = "us-east1"
+PROJECT_ID = "qwiklabs-asl-04-5e165f533cac"
 ARTIFACT_STORE = f"gs://{PROJECT_ID}-beer-artifact-store"
 DATA_ROOT = os.path.join(ARTIFACT_STORE, "data")
 JOB_DIR_ROOT = os.path.join(ARTIFACT_STORE, "jobs")
@@ -20,11 +20,11 @@ JOB_NAME = f"beer_tuning_{TIMESTAMP}"
 JOB_DIR = os.path.join(JOB_DIR_ROOT, JOB_NAME)
 MACHINE_TYPE="n1-standard-16"
 
-os.environ["JOB_DIR_ROOT"] = JOB_DIR_ROOT
-os.environ["PROJECT_ID"] = PROJECT_ID
-os.environ["REGION"] = REGION
-os.environ["JOB_NAME"] = JOB_NAME
-os.environ["JOB_DIR"] = JOB_DIR
+# os.environ["JOB_DIR_ROOT"] = JOB_DIR_ROOT
+# os.environ["PROJECT_ID"] = PROJECT_ID
+# os.environ["REGION"] = REGION
+# os.environ["JOB_NAME"] = JOB_NAME
+# os.environ["JOB_DIR"] = JOB_DIR
 
 # Load matrices and files
 print("Load files...")
@@ -164,7 +164,7 @@ def train(
     factors: int,
     regularization: float,
     iterations: int,
-    is_tune: bool,
+    is_tune: bool = True,
 ) -> None:
     print("Model is training...")
     model = AlternatingLeastSquares(

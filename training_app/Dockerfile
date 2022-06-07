@@ -1,6 +1,6 @@
 
 FROM gcr.io/deeplearning-platform-release/base-cpu
-RUN pip install -U fire cloudml-hypertune
+RUN pip install -U fire cloudml-hypertune implicit
 WORKDIR /app
 COPY train.py .
 
