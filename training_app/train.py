@@ -3,6 +3,8 @@ import pickle
 import time
 
 import fire
+#add import subprocess
+import subprocess
 import hypertune
 import numpy as np
 import pandas as pd
