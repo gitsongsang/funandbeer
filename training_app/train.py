@@ -1,15 +1,15 @@
 import os
 import pickle
+import subprocess
 import time
 
 import fire
-#add import subprocess
-import subprocess
 import hypertune
 import numpy as np
 import pandas as pd
 from implicit.als import AlternatingLeastSquares
 from scipy.sparse import csr_matrix
+
 
 # Set environments
 REGION = "us-east1"
@@ -17,39 +17,6 @@ PROJECT_ID = "qwiklabs-asl-04-5e165f533cac"
 ARTIFACT_STORE = f"gs://{PROJECT_ID}-beer-artifact-store"
 DATA_ROOT = os.path.join(ARTIFACT_STORE, "data")
 JOB_DIR_ROOT = os.path.join(ARTIFACT_STORE, "jobs")
-
-# Load matrices and files
-print("Load files...")
-train = pd.read_parquet(os.path.join(DATA_ROOT, "train.parquet"))
-valid = pd.read_parquet(os.path.join(DATA_ROOT, "valid.parquet"))
-most_common_beers = pd.read_parquet(
-    os.path.join(DATA_ROOT, "most_common_beers.parquet")
-)
-user_mapper = pd.read_parquet(os.path.join(DATA_ROOT, "user_mapper.parquet"))[
-    "idx"
-].to_dict()
-item_mapper = pd.read_parquet(os.path.join(DATA_ROOT, "item_mapper.parquet"))[
-    "idx"
-].to_dict()
-
-# Preprocess
-print("Preprocessing...")
-num_users = len(user_mappers)
-num_items = len(item_mappers)
-
-train_mat = _fill_rating_matrix(
-    _create_rating_matrix(num_users, num_items), train
-)
-valid_mat = _fill_rating_matrix(
-    _create_rating_matrix(num_users, num_items), train
-)
-
-baseline_topk = most_common_beers[:10]["beer_name"].tolist()
-valid_users = np.where(valid_mat.sum(axis=1) > 0)[0]
-
-print("Make sparce matrices...")
-train_csr = csr_matrix(train_mat)
-valid_csr = csr_matrix(valid_mat)
 
 
 def _create_rating_matrix(num_users: int, num_items: int) -> np.ndarray:
@@ -205,6 +172,42 @@ def _assert_same_dimension(actual: np.ndarray, pred: np.ndarray) -> bool:
     return actual.shape == pred.shape
 
 
+def preprocess():
+    # Load matrices and files
+    print("Load files...")
+    train = pd.read_parquet(os.path.join(DATA_ROOT, "train.parquet"))
+    valid = pd.read_parquet(os.path.join(DATA_ROOT, "valid.parquet"))
+    most_common_beers = pd.read_parquet(
+        os.path.join(DATA_ROOT, "most_common_beers.parquet")
+    )
+    user_mapper = pd.read_parquet(
+        os.path.join(DATA_ROOT, "user_mapper.parquet")
+    )["idx"].to_dict()
+    item_mapper = pd.read_parquet(
+        os.path.join(DATA_ROOT, "item_mapper.parquet")
+    )["idx"].to_dict()
+
+    # Preprocess
+    print("Preprocessing...")
+    num_users = len(user_mapper)
+    num_items = len(item_mapper)
+
+    train_mat = _fill_rating_matrix(
+        _create_rating_matrix(num_users, num_items), train
+    )
+    valid_mat = _fill_rating_matrix(
+        _create_rating_matrix(num_users, num_items), valid
+    )
+
+    baseline_topk = most_common_beers[:10]["beer_name"].tolist()
+    valid_users = np.where(valid_mat.sum(axis=1) > 0)[0]
+
+    print("Make sparce matrices...")
+    train_csr = csr_matrix(train_mat)
+
+    return baseline_topk, train_csr, valid_mat, valid_users
+
+
 def train(
     factors: int,
     regularization: float,
@@ -225,6 +228,7 @@ def train(
         If True is passed, a job for hyperparameter tuning via Vertex AI is triggered.
         When the job is not triggered, the trained model saved in the desired path.
     """
+    baseline_topk, train_csr, valid_mat, valid_users = preprocess()
 
     print("Model is training...")
     model = AlternatingLeastSquares(
@@ -239,7 +243,7 @@ def train(
         print("Get 10 recommendations for each users...")
         pred = predict(
             user_ids=valid_users,
-            train_mat=train_csr,
+            train_csr=train_csr,
             model=model,
             popular_items=baseline_topk,
             top_k=10,
@@ -264,7 +268,7 @@ def train(
 
 def predict(
     user_ids: np.ndarray,
-    train_mat: csr_matrix,
+    train_csr: csr_matrix,
     model: AlternatingLeastSquares,
     popular_items: list,
     top_k: int,
@@ -294,7 +298,7 @@ def predict(
     """
     # Make recommendations based on the model
     rec = model.recommend(
-        user_ids, train_mat[user_ids], N=top_k, filter_already_liked_items=True
+        user_ids, train_csr[user_ids], N=top_k, filter_already_liked_items=True
     )
 
     # Substitutes for cold users with the most popular items
