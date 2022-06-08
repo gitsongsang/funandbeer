@@ -1,6 +1,7 @@
 import os
 import pickle
 import subprocess
+import sys
 import time
 
 import fire
@@ -17,6 +18,9 @@ PROJECT_ID = "qwiklabs-asl-04-5e165f533cac"
 ARTIFACT_STORE = f"gs://{PROJECT_ID}-beer-artifact-store"
 DATA_ROOT = os.path.join(ARTIFACT_STORE, "data")
 JOB_DIR_ROOT = os.path.join(ARTIFACT_STORE, "jobs")
+TIMESTAMP = time.strftime("%Y%m%d_%H%M%S")
+JOB_NAME = f"JOB_VERTEX_{TIMESTAMP}"
+JOB_DIR = f"{JOB_DIR_ROOT}/{JOB_NAME}"
 
 
 def _create_rating_matrix(num_users: int, num_items: int) -> np.ndarray:
