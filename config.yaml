@@ -9,7 +9,6 @@ studySpec:
       - 16
       - 32
       - 64
-      - 128
   - parameterId: iterations
     integerValueSpec:
       minValue: 10
