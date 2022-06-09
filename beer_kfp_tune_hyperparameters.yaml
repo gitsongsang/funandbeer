@@ -1,0 +1,186 @@
+name: Tune hyperparameters
+description: null
+inputs:
+  project: {type: String, description: null}
+  location: {type: String, description: null}
+  container_uri: {type: String, description: null}
+  training_file_path: {type: String, description: null}
+  validation_file_path: {type: String, description: null}
+  staging_bucket: {type: String, description: null}
+  max_trial_count: {type: Integer, description: null}
+  parallel_trial_count: {type: Integer, description: null}
+outputs:
+  best_map_at_10: {type: Float}
+  best_factors: {type: Integer}
+  best_iterations: {type: Integer}
+  best_regularization: {type: Float}
+implementation:
+  container:
+    image: python:3.8
+    commands: [sh, -c, "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m\
+        \ ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\n\
+        fi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet     --no-warn-script-location\
+        \ 'google-cloud-aiplatform' 'kfp==1.8.10' && \"$0\" \"$@\"\n", sh, -ec, 'program_path=$(mktemp
+        -d)
+
+        printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+        python3 -m kfp.v2.components.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+        ', "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing\
+        \ import *\n\ndef tune_hyperparameters(\n    project: str,\n    location:\
+        \ str,\n    container_uri: str,\n    training_file_path: str,\n    validation_file_path:\
+        \ str,\n    staging_bucket: str,\n    max_trial_count: int,\n    parallel_trial_count:\
+        \ int,\n) -> NamedTuple(\n    \"Outputs\",\n    [(\"best_map_at_10\", float),\
+        \ (\"best_factors\", int), (\"best_iterations\", int), (\"best_regularization\"\
+        , float)],\n):\n\n    # pylint: disable=import-outside-toplevel\n    from\
+        \ google.cloud import aiplatform\n    from google.cloud.aiplatform import\
+        \ hyperparameter_tuning as hpt\n\n    aiplatform.init(\n        project=project,\
+        \ location=location, staging_bucket=staging_bucket\n    )\n\n    worker_pool_specs\
+        \ = [\n        {\n            \"machine_spec\": {\n                \"machine_type\"\
+        : \"n1-standard-16\",\n                \"accelerator_type\": \"NVIDIA_TESLA_T4\"\
+        ,\n                \"accelerator_count\": 1,\n            },\n           \
+        \ \"replica_count\": 1,\n            \"container_spec\": {\n             \
+        \   \"image_uri\": container_uri,\n            },\n        }\n    ]\n\n  \
+        \  custom_job = aiplatform.CustomJob(\n        display_name=\"beer_kfp_trial_job\"\
+        ,\n        worker_pool_specs=worker_pool_specs,\n    )\n\n    hp_job = aiplatform.HyperparameterTuningJob(\n\
+        \        display_name=\"beer_kfp_tuning_job\",\n        custom_job=custom_job,\n\
+        \        metric_spec={\n            \"map_at_10\": \"maximize\",\n       \
+        \ },\n        parameter_spec={\n            \"regularization\": hpt.DoubleParameterSpec(\n\
+        \                min=1.0e-4, max=1.0e-1, scale=\"log\"\n            ),\n \
+        \           \"factors\": hpt.DiscreteParameterSpec(\n                values=[16,\
+        \ 32, 64], scale=\"linear\"\n            ),\n            \"iterations\": hpt.IntegerParameterSpec(\n\
+        \                min=10, max=100, scale=\"linear\"\n            ),\n     \
+        \   },\n        max_trial_count=max_trial_count,\n        parallel_trial_count=parallel_trial_count,\n\
+        \    )\n\n    hp_job.run()\n\n    metrics = [\n        trial.final_measurement.metrics[0].value\
+        \ for trial in hp_job.trials\n    ]\n    best_trial = hp_job.trials[metrics.index(max(metrics))]\n\
+        \    best_map_at_10 = float(best_trial.final_measurement.metrics[0].value)\n\
+        \    best_factors = int(best_trial.parameters[0].value)\n    best_iterations\
+        \ = int(best_trial.parameters[1].value)\n    best_regularization = best_trial.parameters[2].value\n\
+        \    return best_map_at_10, best_factors, best_iterations, best_regularization\n\
+        \n"]
+    arguments: [--executor_input, '{{$}}', --function_to_execute, tune_hyperparameters]
+name: Tune hyperparameters
+description: null
+inputs:
+  project: {type: String, description: null}
+  location: {type: String, description: null}
+  container_uri: {type: String, description: null}
+  training_file_path: {type: String, description: null}
+  validation_file_path: {type: String, description: null}
+  staging_bucket: {type: String, description: null}
+  max_trial_count: {type: Integer, description: null}
+  parallel_trial_count: {type: Integer, description: null}
+outputs:
+  best_map_at_10: {type: Float}
+  best_factors: {type: Integer}
+  best_iterations: {type: Integer}
+  best_regularization: {type: Float}
+implementation:
+  container:
+    image: python:3.8
+    commands: [sh, -c, "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m\
+        \ ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\n\
+        fi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet     --no-warn-script-location\
+        \ 'google-cloud-aiplatform' 'kfp==1.8.10' && \"$0\" \"$@\"\n", sh, -ec, 'program_path=$(mktemp
+        -d)
+
+        printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+        python3 -m kfp.v2.components.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+        ', "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing\
+        \ import *\n\ndef tune_hyperparameters(\n    project: str,\n    location:\
+        \ str,\n    container_uri: str,\n    training_file_path: str,\n    validation_file_path:\
+        \ str,\n    staging_bucket: str,\n    max_trial_count: int,\n    parallel_trial_count:\
+        \ int,\n) -> NamedTuple(\n    \"Outputs\",\n    [(\"best_map_at_10\", float),\
+        \ (\"best_factors\", int), (\"best_iterations\", int), (\"best_regularization\"\
+        , float)],\n):\n\n    # pylint: disable=import-outside-toplevel\n    from\
+        \ google.cloud import aiplatform\n    from google.cloud.aiplatform import\
+        \ hyperparameter_tuning as hpt\n\n    aiplatform.init(\n        project=project,\
+        \ location=location, staging_bucket=staging_bucket\n    )\n\n    worker_pool_specs\
+        \ = [\n        {\n            \"machine_spec\": {\n                \"machine_type\"\
+        : \"n1-standard-16\",\n                \"accelerator_type\": \"NVIDIA_TESLA_T4\"\
+        ,\n                \"accelerator_count\": 1,\n            },\n           \
+        \ \"replica_count\": 1,\n            \"container_spec\": {\n             \
+        \   \"image_uri\": container_uri,\n            },\n        }\n    ]\n\n  \
+        \  custom_job = aiplatform.CustomJob(\n        display_name=\"beer_kfp_trial_job\"\
+        ,\n        worker_pool_specs=worker_pool_specs,\n    )\n\n    hp_job = aiplatform.HyperparameterTuningJob(\n\
+        \        display_name=\"beer_kfp_tuning_job\",\n        custom_job=custom_job,\n\
+        \        metric_spec={\n            \"map_at_10\": \"maximize\",\n       \
+        \ },\n        parameter_spec={\n            \"regularization\": hpt.DoubleParameterSpec(\n\
+        \                min=1.0e-4, max=1.0e-1, scale=\"log\"\n            ),\n \
+        \           \"factors\": hpt.DiscreteParameterSpec(\n                values=[16,\
+        \ 32, 64], scale=\"linear\"\n            ),\n            \"iterations\": hpt.IntegerParameterSpec(\n\
+        \                min=10, max=100, scale=\"linear\"\n            ),\n     \
+        \   },\n        max_trial_count=max_trial_count,\n        parallel_trial_count=parallel_trial_count,\n\
+        \    )\n\n    hp_job.run()\n\n    metrics = [\n        trial.final_measurement.metrics[0].value\
+        \ for trial in hp_job.trials\n    ]\n    best_trial = hp_job.trials[metrics.index(max(metrics))]\n\
+        \    best_map_at_10 = float(best_trial.final_measurement.metrics[0].value)\n\
+        \    best_factors = int(best_trial.parameters[0].value)\n    best_iterations\
+        \ = int(best_trial.parameters[1].value)\n    best_regularization = best_trial.parameters[2].value\n\
+        \    return best_map_at_10, best_factors, best_iterations, best_regularization\n\
+        \n"]
+    arguments: [--executor_input, '{{$}}', --function_to_execute, tune_hyperparameters]
+name: Tune hyperparameters
+description: null
+inputs:
+  project: {type: String, description: null}
+  location: {type: String, description: null}
+  container_uri: {type: String, description: null}
+  training_file_path: {type: String, description: null}
+  validation_file_path: {type: String, description: null}
+  staging_bucket: {type: String, description: null}
+  max_trial_count: {type: Integer, description: null}
+  parallel_trial_count: {type: Integer, description: null}
+outputs:
+  best_map_at_10: {type: Float}
+  best_factors: {type: Integer}
+  best_iterations: {type: Integer}
+  best_regularization: {type: Float}
+implementation:
+  container:
+    image: python:3.8
+    commands: [sh, -c, "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m\
+        \ ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\n\
+        fi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet     --no-warn-script-location\
+        \ 'google-cloud-aiplatform' 'kfp==1.8.10' && \"$0\" \"$@\"\n", sh, -ec, 'program_path=$(mktemp
+        -d)
+
+        printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+        python3 -m kfp.v2.components.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+        ', "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing\
+        \ import *\n\ndef tune_hyperparameters(\n    project: str,\n    location:\
+        \ str,\n    container_uri: str,\n    training_file_path: str,\n    validation_file_path:\
+        \ str,\n    staging_bucket: str,\n    max_trial_count: int,\n    parallel_trial_count:\
+        \ int,\n) -> NamedTuple(\n    \"Outputs\",\n    [(\"best_map_at_10\", float),\
+        \ (\"best_factors\", int), (\"best_iterations\", int), (\"best_regularization\"\
+        , float)],\n):\n\n    # pylint: disable=import-outside-toplevel\n    from\
+        \ google.cloud import aiplatform\n    from google.cloud.aiplatform import\
+        \ hyperparameter_tuning as hpt\n\n    aiplatform.init(\n        project=project,\
+        \ location=location, staging_bucket=staging_bucket\n    )\n\n    worker_pool_specs\
+        \ = [\n        {\n            \"machine_spec\": {\n                \"machine_type\"\
+        : \"n1-standard-16\",\n                \"accelerator_type\": \"NVIDIA_TESLA_T4\"\
+        ,\n                \"accelerator_count\": 1,\n            },\n           \
+        \ \"replica_count\": 1,\n            \"container_spec\": {\n             \
+        \   \"image_uri\": container_uri,\n            },\n        }\n    ]\n\n  \
+        \  custom_job = aiplatform.CustomJob(\n        display_name=\"beer_kfp_trial_job\"\
+        ,\n        worker_pool_specs=worker_pool_specs,\n    )\n\n    hp_job = aiplatform.HyperparameterTuningJob(\n\
+        \        display_name=\"beer_kfp_tuning_job\",\n        custom_job=custom_job,\n\
+        \        metric_spec={\n            \"map_at_10\": \"maximize\",\n       \
+        \ },\n        parameter_spec={\n            \"regularization\": hpt.DoubleParameterSpec(\n\
+        \                min=1.0e-4, max=1.0e-1, scale=\"log\"\n            ),\n \
+        \           \"factors\": hpt.DiscreteParameterSpec(\n                values=[16,\
+        \ 32, 64], scale=\"linear\"\n            ),\n            \"iterations\": hpt.IntegerParameterSpec(\n\
+        \                min=10, max=100, scale=\"linear\"\n            ),\n     \
+        \   },\n        max_trial_count=max_trial_count,\n        parallel_trial_count=parallel_trial_count,\n\
+        \    )\n\n    hp_job.run()\n\n    metrics = [\n        trial.final_measurement.metrics[0].value\
+        \ for trial in hp_job.trials\n    ]\n    best_trial = hp_job.trials[metrics.index(max(metrics))]\n\
+        \    best_map_at_10 = float(best_trial.final_measurement.metrics[0].value)\n\
+        \    best_factors = int(best_trial.parameters[0].value)\n    best_iterations\
+        \ = int(best_trial.parameters[1].value)\n    best_regularization = best_trial.parameters[2].value\n\
+        \    return best_map_at_10, best_factors, best_iterations, best_regularization\n\
+        \n"]
+    arguments: [--executor_input, '{{$}}', --function_to_execute, tune_hyperparameters]

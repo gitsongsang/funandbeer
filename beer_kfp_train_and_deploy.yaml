@@ -1,0 +1,135 @@
+name: Train and deploy
+description: null
+inputs:
+  project: {type: String, description: null}
+  location: {type: String, description: null}
+  container_uri: {type: String, description: null}
+  serving_container_uri: {type: String, description: null}
+  training_file_path: {type: String, description: null}
+  validation_file_path: {type: String, description: null}
+  staging_bucket: {type: String, description: null}
+  regularization: {type: Float, description: null}
+  factors: {type: Integer, description: null}
+  iterations: {type: Integer, description: null}
+  is_tune: {type: Boolean, description: null}
+outputs: null
+implementation:
+  container:
+    image: python:3.8
+    commands: [sh, -c, "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m\
+        \ ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\n\
+        fi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet     --no-warn-script-location\
+        \ 'google-cloud-aiplatform' 'kfp==1.8.10' && \"$0\" \"$@\"\n", sh, -ec, 'program_path=$(mktemp
+        -d)
+
+        printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+        python3 -m kfp.v2.components.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+        ', "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing\
+        \ import *\n\ndef train_and_deploy(\n    project: str,\n    location: str,\n\
+        \    container_uri: str,\n    serving_container_uri: str,\n    training_file_path:\
+        \ str,\n    validation_file_path: str,\n    staging_bucket: str,\n    regularization:\
+        \ float,\n    factors: int,\n    iterations: int,\n    is_tune: bool,\n):\n\
+        \n    # pylint: disable-next=import-outside-toplevel\n    from google.cloud\
+        \ import aiplatform\n\n    aiplatform.init(\n        project=project, location=location,\
+        \ staging_bucket=staging_bucket\n    )\n    job = aiplatform.CustomContainerTrainingJob(\n\
+        \        display_name=\"beer_kfp_training\",\n        container_uri=container_uri,\n\
+        \        command=[\n            \"python\",\n            \"train.py\",\n \
+        \           f\"--factors={factors}\",\n            f\"--regularization={regularization}\"\
+        ,\n            f\"--iterations={iterations}\",\n            f\"--is_tune={is_tune}\"\
+        ,\n        ],\n        staging_bucket=staging_bucket,\n    )\n    model =\
+        \ job.run(replica_count=1, model_display_name=\"beer_kfp_model\")\n    endpoint\
+        \ = model.deploy(  # pylint: disable=unused-variable\n        traffic_split={\"\
+        0\": 100},\n        machine_type=\"n1-standard-16\",\n    )\n\n"]
+    arguments: [--executor_input, '{{$}}', --function_to_execute, train_and_deploy]
+name: Train and deploy
+description: null
+inputs:
+  project: {type: String, description: null}
+  location: {type: String, description: null}
+  container_uri: {type: String, description: null}
+  serving_container_uri: {type: String, description: null}
+  training_file_path: {type: String, description: null}
+  validation_file_path: {type: String, description: null}
+  staging_bucket: {type: String, description: null}
+  regularization: {type: Float, description: null}
+  factors: {type: Integer, description: null}
+  iterations: {type: Integer, description: null}
+  is_tune: {type: Boolean, description: null}
+outputs: null
+implementation:
+  container:
+    image: python:3.8
+    commands: [sh, -c, "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m\
+        \ ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\n\
+        fi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet     --no-warn-script-location\
+        \ 'google-cloud-aiplatform' 'kfp==1.8.10' && \"$0\" \"$@\"\n", sh, -ec, 'program_path=$(mktemp
+        -d)
+
+        printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+        python3 -m kfp.v2.components.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+        ', "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing\
+        \ import *\n\ndef train_and_deploy(\n    project: str,\n    location: str,\n\
+        \    container_uri: str,\n    serving_container_uri: str,\n    training_file_path:\
+        \ str,\n    validation_file_path: str,\n    staging_bucket: str,\n    regularization:\
+        \ float,\n    factors: int,\n    iterations: int,\n    is_tune: bool,\n):\n\
+        \n    # pylint: disable-next=import-outside-toplevel\n    from google.cloud\
+        \ import aiplatform\n\n    aiplatform.init(\n        project=project, location=location,\
+        \ staging_bucket=staging_bucket\n    )\n    job = aiplatform.CustomContainerTrainingJob(\n\
+        \        display_name=\"beer_kfp_training\",\n        container_uri=container_uri,\n\
+        \        command=[\n            \"python\",\n            \"train.py\",\n \
+        \           f\"--factors={factors}\",\n            f\"--regularization={regularization}\"\
+        ,\n            f\"--iterations={iterations}\",\n            f\"--is_tune={is_tune}\"\
+        ,\n        ],\n        staging_bucket=staging_bucket,\n    )\n    model =\
+        \ job.run(replica_count=1, model_display_name=\"beer_kfp_model\")\n    endpoint\
+        \ = model.deploy(  # pylint: disable=unused-variable\n        traffic_split={\"\
+        0\": 100},\n        machine_type=\"n1-standard-16\",\n    )\n\n"]
+    arguments: [--executor_input, '{{$}}', --function_to_execute, train_and_deploy]
+name: Train and deploy
+description: null
+inputs:
+  project: {type: String, description: null}
+  location: {type: String, description: null}
+  container_uri: {type: String, description: null}
+  serving_container_uri: {type: String, description: null}
+  training_file_path: {type: String, description: null}
+  validation_file_path: {type: String, description: null}
+  staging_bucket: {type: String, description: null}
+  regularization: {type: Float, description: null}
+  factors: {type: Integer, description: null}
+  iterations: {type: Integer, description: null}
+  is_tune: {type: Boolean, description: null}
+outputs: null
+implementation:
+  container:
+    image: python:3.8
+    commands: [sh, -c, "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m\
+        \ ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\n\
+        fi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet     --no-warn-script-location\
+        \ 'google-cloud-aiplatform' 'kfp==1.8.10' && \"$0\" \"$@\"\n", sh, -ec, 'program_path=$(mktemp
+        -d)
+
+        printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+        python3 -m kfp.v2.components.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+        ', "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing\
+        \ import *\n\ndef train_and_deploy(\n    project: str,\n    location: str,\n\
+        \    container_uri: str,\n    serving_container_uri: str,\n    training_file_path:\
+        \ str,\n    validation_file_path: str,\n    staging_bucket: str,\n    regularization:\
+        \ float,\n    factors: int,\n    iterations: int,\n    is_tune: bool,\n):\n\
+        \n    # pylint: disable-next=import-outside-toplevel\n    from google.cloud\
+        \ import aiplatform\n\n    aiplatform.init(\n        project=project, location=location,\
+        \ staging_bucket=staging_bucket\n    )\n    job = aiplatform.CustomContainerTrainingJob(\n\
+        \        display_name=\"beer_kfp_training\",\n        container_uri=container_uri,\n\
+        \        command=[\n            \"python\",\n            \"train.py\",\n \
+        \           f\"--factors={factors}\",\n            f\"--regularization={regularization}\"\
+        ,\n            f\"--iterations={iterations}\",\n            f\"--is_tune={is_tune}\"\
+        ,\n        ],\n        staging_bucket=staging_bucket,\n    )\n    model =\
+        \ job.run(replica_count=1, model_display_name=\"beer_kfp_model\")\n    endpoint\
+        \ = model.deploy(  # pylint: disable=unused-variable\n        traffic_split={\"\
+        0\": 100},\n        machine_type=\"n1-standard-16\",\n    )\n\n"]
+    arguments: [--executor_input, '{{$}}', --function_to_execute, train_and_deploy]
