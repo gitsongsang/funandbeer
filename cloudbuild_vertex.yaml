@@ -15,8 +15,7 @@ steps:
 # Build the trainer image
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'gcr.io/$PROJECT_ID/trainer_image_beer_vertex:latest', '.']
-#  dir: $_PIPELINE_FOLDER/training_app
-  dir: funandbeer/training_app
+  dir: $_PIPELINE_FOLDER/training_app
 
 # Compile the pipeline
 - name: 'gcr.io/$PROJECT_ID/kfp-cli-vertex'
