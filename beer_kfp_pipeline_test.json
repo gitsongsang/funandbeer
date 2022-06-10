@@ -83,6 +83,9 @@
         "parameters": {
           "gcp_resources": {
             "parameterType": "STRING"
+          },
+          "region": {
+            "parameterType": "STRING"
           }
         }
       },
@@ -173,6 +176,9 @@
           }
         },
         "parameters": {
+          "dedicated_resources_machine_type": {
+            "parameterType": "STRING"
+          },
           "dedicated_resources_max_replica_count": {
             "parameterType": "NUMBER_INTEGER"
           },
@@ -204,6 +210,9 @@
           },
           "project": {
             "parameterType": "STRING"
+          },
+          "serving_container_image_uri": {
+            "parameterType": "STRING"
           }
         }
       },
@@ -233,7 +242,7 @@
             "--type",
             "CustomJob",
             "--payload",
-            "{\"display_name\": \"{{$.inputs.parameters['display_name']}}\", \"job_spec\": {\"worker_pool_specs\": {{$.inputs.parameters['worker_pool_specs']}}, \"scheduling\": {\"timeout\": \"\", \"restart_job_on_worker_restart\": \"\"}, \"service_account\": \"\", \"tensorboard\": \"\", \"enable_web_access\": \"\", \"network\": \"\", \"reserved_ip_ranges\": , \"base_output_directory\": {\"output_uri_prefix\": \"{{$.inputs.parameters['base_output_directory']}}\"}}, \"labels\": , \"encryption_spec\": {\"kms_key_name\":\"\"}}",
+            "{\"display_name\": \"{{$.inputs.parameters['display_name']}}\", \"job_spec\": {\"worker_pool_specs\": {{$.inputs.parameters['worker_pool_specs']}}, \"scheduling\": {\"timeout\": \"\", \"restart_job_on_worker_restart\": \"\"}, \"service_account\": \"\", \"tensorboard\": \"\", \"network\": \"\", \"base_output_directory\": {\"output_uri_prefix\": \"{{$.inputs.parameters['base_output_directory']}}\"}}, \"labels\": , \"encryption_spec\": {\"kms_key_name\":\"\"}}",
             "--project",
             "{{$.inputs.parameters['project']}}",
             "--location",
@@ -245,9 +254,9 @@
             "python3",
             "-u",
             "-m",
-            "google_cloud_pipeline_components.container.v1.gcp_launcher.launcher"
+            "google_cloud_pipeline_components.container.experimental.gcp_launcher.launcher"
           ],
-          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:1.0.8"
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:0.2.1"
         }
       },
       "exec-endpoint-create": {
@@ -269,9 +278,9 @@
             "python3",
             "-u",
             "-m",
-            "google_cloud_pipeline_components.container.v1.gcp_launcher.launcher"
+            "google_cloud_pipeline_components.container.experimental.gcp_launcher.launcher"
           ],
-          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:1.0.8"
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:0.2.1"
         }
       },
       "exec-getbesthyperparametersop": {
@@ -289,7 +298,7 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\npython3 -m kfp.v2.components.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing import *\n\ndef GetBestHyperparametersOp(trials: list, study_spec_metrics: list) -> list:\n  \"\"\"Retrieves the best hyperparameters based on the trials.\n\n  Args:\n      trials (list): Required. List representing the intermediate\n        JSON representation of the trials from the hyperparameter tuning job.\n      study_spec_metrics (list): Required. List serialized from dictionary\n        representing the metrics to optimize.\n        The dictionary key is the metric_id, which is reported by your training\n        job, and the dictionary value is the optimization goal of the metric\n        ('minimize' or 'maximize'). example:\n        metrics = hyperparameter_tuning_job.serialize_metrics(\n            {'loss': 'minimize', 'accuracy': 'maximize'})\n\n  Returns:\n      List representing the intermediate JSON representation of the best\n      hyperparameters from the best trial in the list of trials.\n\n  Raises:\n      RuntimeError: If there are multiple metrics.\n  \"\"\"\n  from google.cloud.aiplatform_v1.types import study\n\n  if len(study_spec_metrics) > 1:\n    raise RuntimeError('Unable to determine best parameters for multi-objective'\n                       ' hyperparameter tuning.')\n  trials_list = [study.Trial.from_json(trial) for trial in trials]\n  best_trial = None\n  goal = study_spec_metrics[0]['goal']\n  best_fn = None\n  if goal == study.StudySpec.MetricSpec.GoalType.MAXIMIZE:\n    best_fn = max\n  elif goal == study.StudySpec.MetricSpec.GoalType.MINIMIZE:\n    best_fn = min\n  best_trial = best_fn(\n      trials_list, key=lambda trial: trial.final_measurement.metrics[0].value)\n\n  return [\n      study.Trial.Parameter.to_json(param) for param in best_trial.parameters\n  ]\n\n"
+            "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing import *\n\ndef GetBestHyperparametersOp(trials: list, study_spec_metrics: list) -> list:\n  from google.cloud.aiplatform_v1.types import study\n\n  if len(study_spec_metrics) > 1:\n    raise RuntimeError('Unable to determine best parameters for multi-objective'\n                       ' hyperparameter tuning.')\n  trials_list = [study.Trial.from_json(trial) for trial in trials]\n  best_trial = None\n  goal = study_spec_metrics[0]['goal']\n  best_fn = None\n  if goal == study.StudySpec.MetricSpec.GoalType.MAXIMIZE:\n    best_fn = max\n  elif goal == study.StudySpec.MetricSpec.GoalType.MINIMIZE:\n    best_fn = min\n  best_trial = best_fn(\n      trials_list, key=lambda trial: trial.final_measurement.metrics[0].value)\n\n  return [\n      study.Trial.Parameter.to_json(param) for param in best_trial.parameters  # pytype: disable=bad-return-type\n  ]\n\n"
           ],
           "image": "python:3.7"
         }
@@ -309,7 +318,7 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\npython3 -m kfp.v2.components.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing import *\n\ndef GetTrialsOp(gcp_resources: str) -> list:\n  \"\"\"Retrieves the best trial from the trials.\n\n  Args:\n      gcp_resources (str): Proto tracking the hyperparameter tuning job.\n\n  Returns:\n      List of strings representing the intermediate JSON representation of the\n      trials from the hyperparameter tuning job.\n  \"\"\"\n  from google.cloud import aiplatform\n  from google_cloud_pipeline_components.proto.gcp_resources_pb2 import GcpResources\n  from google.protobuf.json_format import Parse\n  from google.cloud.aiplatform_v1.types import study\n\n  api_endpoint_suffix = '-aiplatform.googleapis.com'\n  gcp_resources_proto = Parse(gcp_resources, GcpResources())\n  gcp_resources_split = gcp_resources_proto.resources[0].resource_uri.partition(\n      'projects')\n  resource_name = gcp_resources_split[1] + gcp_resources_split[2]\n  prefix_str = gcp_resources_split[0]\n  prefix_str = prefix_str[:prefix_str.find(api_endpoint_suffix)]\n  api_endpoint = prefix_str[(prefix_str.rfind('//') + 2):] + api_endpoint_suffix\n\n  client_options = {'api_endpoint': api_endpoint}\n  job_client = aiplatform.gapic.JobServiceClient(client_options=client_options)\n  response = job_client.get_hyperparameter_tuning_job(name=resource_name)\n\n  return [study.Trial.to_json(trial) for trial in response.trials]\n\n"
+            "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing import *\n\ndef GetTrialsOp(gcp_resources: str, region: str) -> list:\n  from google.cloud import aiplatform\n  from google_cloud_pipeline_components.proto.gcp_resources_pb2 import GcpResources\n  from google.protobuf.json_format import Parse\n  from google.cloud.aiplatform_v1.types import study\n\n  client_options = {'api_endpoint': region + '-aiplatform.googleapis.com'}\n  job_client = aiplatform.gapic.JobServiceClient(client_options=client_options)\n  gcp_resources_proto = Parse(gcp_resources, GcpResources())\n  gcp_resources_split = gcp_resources_proto.resources[0].resource_uri.partition(\n      'projects')\n  resource_name = gcp_resources_split[1] + gcp_resources_split[2]\n  response = job_client.get_hyperparameter_tuning_job(name=resource_name)\n\n  return [study.Trial.to_json(trial) for trial in response.trials]\n\n"
           ],
           "image": "python:3.7"
         }
@@ -329,7 +338,7 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\npython3 -m kfp.v2.components.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing import *\n\ndef GetWorkerPoolSpecsOp(best_hyperparameters: list,\n                         worker_pool_specs: list) -> list:\n  \"\"\"Constructs worker_pool_specs based on the best hyperparameters.\n\n  Args:\n      best_hyperparameters (list): Required. List representing the intermediate\n        JSON representation of the best hyperparameters from the\n        hyperparameter tuning job.\n      worker_pool_specs (list): Required. The spec of the worker pools\n        including machine type and Docker image. All worker pools except the\n        first one are optional and can be skipped by providing an empty value.\n\n  Returns:\n      List containing an intermediate JSON representation of the\n      worker_pool_specs updated with the best hyperparameters as arguments\n      in the container_spec.\n\n  \"\"\"\n  from google.cloud.aiplatform_v1.types import study\n\n  for worker_pool_spec in worker_pool_specs:\n    if 'args' not in worker_pool_spec['container_spec']:\n      worker_pool_spec['container_spec']['args'] = []\n    for param in best_hyperparameters:\n      p = study.Trial.Parameter.from_json(param)\n      worker_pool_spec['container_spec']['args'].append(\n          f'--{p.parameter_id}={p.value}')\n\n  return worker_pool_specs\n\n"
+            "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing import *\n\ndef GetWorkerPoolSpecsOp(best_hyperparameters: list,\n                         worker_pool_specs: list) -> list:\n  from google.cloud.aiplatform_v1.types import study\n\n  for worker_pool_spec in worker_pool_specs:\n    if 'args' not in worker_pool_spec['container_spec']:\n      worker_pool_spec['container_spec']['args'] = []\n    for param in best_hyperparameters:\n      p = study.Trial.Parameter.from_json(param)\n      worker_pool_spec['container_spec']['args'].append(\n          f'--{p.parameter_id}={p.value}')\n\n  return worker_pool_specs\n\n"
           ],
           "image": "python:3.7"
         }
@@ -352,9 +361,9 @@
             "python3",
             "-u",
             "-m",
-            "google_cloud_pipeline_components.container.v1.gcp_launcher.launcher"
+            "google_cloud_pipeline_components.container.experimental.gcp_launcher.launcher"
           ],
-          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:1.0.8"
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:0.2.1"
         }
       },
       "exec-model-deploy": {
@@ -363,7 +372,7 @@
             "--type",
             "DeployModel",
             "--payload",
-            "{\"endpoint\": \"{{$.inputs.artifacts['endpoint'].metadata['resourceName']}}\", \"traffic_split\": , \"deployed_model\": {\"model\": \"{{$.inputs.artifacts['model'].metadata['resourceName']}}\", \"dedicated_resources\": {\"machine_spec\": {\"machine_type\": \"\", \"accelerator_type\": \"\", \"accelerator_count\": }, \"min_replica_count\": {{$.inputs.parameters['dedicated_resources_min_replica_count']}}, \"max_replica_count\": {{$.inputs.parameters['dedicated_resources_max_replica_count']}}}, \"automatic_resources\": {\"min_replica_count\": , \"max_replica_count\": }, \"service_account\": \"\", \"disable_container_logging\": , \"enable_access_logging\": , \"explanation_spec\": {\"parameters\": , \"metadata\": }}}",
+            "{\"endpoint\": \"{{$.inputs.artifacts['endpoint'].metadata['resourceName']}}\", \"traffic_split\": , \"deployed_model\": {\"model\": \"{{$.inputs.artifacts['model'].metadata['resourceName']}}\", \"dedicated_resources\": {\"machine_spec\": {\"machine_type\": \"{{$.inputs.parameters['dedicated_resources_machine_type']}}\", \"accelerator_type\": \"\", \"accelerator_count\": }, \"min_replica_count\": {{$.inputs.parameters['dedicated_resources_min_replica_count']}}, \"max_replica_count\": {{$.inputs.parameters['dedicated_resources_max_replica_count']}}}, \"automatic_resources\": {\"min_replica_count\": , \"max_replica_count\": }, \"service_account\": \"\", \"disable_container_logging\": , \"enable_access_logging\": , \"explanation_spec\": {\"parameters\": , \"metadata\": }}}",
             "--project",
             "",
             "--location",
@@ -375,9 +384,9 @@
             "python3",
             "-u",
             "-m",
-            "google_cloud_pipeline_components.container.v1.gcp_launcher.launcher"
+            "google_cloud_pipeline_components.container.experimental.gcp_launcher.launcher"
           ],
-          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:1.0.8"
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:0.2.1"
         }
       },
       "exec-model-upload": {
@@ -386,7 +395,7 @@
             "--type",
             "UploadModel",
             "--payload",
-            "{\"display_name\": \"{{$.inputs.parameters['display_name']}}\", \"description\": \"\", \"predict_schemata\": {\"instance_schema_uri\": \"\", \"parameters_schema_uri\": \"\", \"prediction_schema_uri\": \"\"}, \"container_spec\": {\"image_uri\": \"\", \"command\": , \"args\": , \"env\": , \"ports\": , \"predict_route\": \"\", \"health_route\": \"\"}, \"artifact_uri\": \"{{$.inputs.parameters['artifact_uri']}}\", \"explanation_spec\": {\"parameters\": , \"metadata\": }, \"encryption_spec\": {\"kms_key_name\":\"\"}, \"labels\": }",
+            "{\"display_name\": \"{{$.inputs.parameters['display_name']}}\", \"description\": \"\", \"predict_schemata\": {\"instance_schema_uri\": \"\", \"parameters_schema_uri\": \"\", \"prediction_schema_uri\": \"\"}, \"container_spec\": {\"image_uri\": \"{{$.inputs.parameters['serving_container_image_uri']}}\", \"command\": , \"args\": , \"env\": , \"ports\": , \"predict_route\": \"\", \"health_route\": \"\"}, \"artifact_uri\": \"{{$.inputs.parameters['artifact_uri']}}\", \"explanation_spec\": {\"parameters\": , \"metadata\": }, \"encryption_spec\": {\"kms_key_name\":\"\"}, \"labels\": }",
             "--project",
             "{{$.inputs.parameters['project']}}",
             "--location",
@@ -399,9 +408,9 @@
             "python3",
             "-u",
             "-m",
-            "google_cloud_pipeline_components.container.v1.gcp_launcher.launcher"
+            "google_cloud_pipeline_components.container.experimental.gcp_launcher.launcher"
           ],
-          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:1.0.8"
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:0.2.1"
         }
       }
     }
@@ -534,6 +543,11 @@
                 "taskOutputParameter": {
                   "outputParameterKey": "gcp_resources",
                   "producerTask": "hyperparameter-tuning-job"
+                }
+              },
+              "region": {
+                "runtimeValue": {
+                  "constant": "us-east1"
                 }
               }
             }
@@ -716,6 +730,11 @@
               }
             },
             "parameters": {
+              "dedicated_resources_machine_type": {
+                "runtimeValue": {
+                  "constant": "n1-standard-16"
+                }
+              },
               "dedicated_resources_max_replica_count": {
                 "runtimeValue": {
                   "constant": 1.0
@@ -762,6 +781,11 @@
               "project": {
                 "runtimeValue": {
                   "constant": "qwiklabs-asl-04-5e165f533cac"
+                }
+              },
+              "serving_container_image_uri": {
+                "runtimeValue": {
+                  "constant": "us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.0-20:latest"
                 }
               }
             }

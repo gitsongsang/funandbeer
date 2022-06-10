@@ -33,6 +33,8 @@ PROJECT_ID = os.getenv("PROJECT_ID")
 REGION = os.getenv("REGION")
 
 TRAINING_CONTAINER_IMAGE_URI = os.getenv("TRAINING_CONTAINER_IMAGE_URI")
+SERVING_CONTAINER_IMAGE_URI = os.getenv("SERVING_CONTAINER_IMAGE_URI")
+SERVING_MACHINE_TYPE = os.getenv("SERVING_MACHINE_TYPE", "n1-standard-16")
 
 TRAINING_FILE_PATH = os.getenv("TRAINING_FILE_PATH")
 VALIDATION_FILE_PATH = os.getenv("VALIDATION_FILE_PATH")
@@ -55,9 +57,7 @@ def create_pipeline():
     worker_pool_specs = [
         {
             "machine_spec": {
-                "machine_type": "n1-standard-4",
-                "accelerator_type": "NVIDIA_TESLA_T4",
-                "accelerator_count": 1,
+                "machine_type": "n1-standard-16",
             },
             "replica_count": 1,
             "container_spec": {
@@ -116,6 +116,7 @@ def create_pipeline():
                 "replica_count": 1,
                 "container_spec": {
                     "image_uri": TRAINING_CONTAINER_IMAGE_URI,
+                    "args": ["--is_tune=False"],
                 },
             }
         ],
@@ -131,13 +132,16 @@ def create_pipeline():
 
     model_upload_task = ModelUploadOp(
         project=PROJECT_ID,
+        location=REGION,
         display_name=f"{PIPELINE_NAME}-kfp-model-upload-job",
         artifact_uri=f"{BASE_OUTPUT_DIR}/model",
+        serving_container_image_uri=SERVING_CONTAINER_IMAGE_URI,
     )
     model_upload_task.after(training_task)
 
     endpoint_create_task = EndpointCreateOp(
         project=PROJECT_ID,
+        location=REGION,
         display_name=f"{PIPELINE_NAME}-kfp-create-endpoint-job",
     )
     endpoint_create_task.after(model_upload_task)
@@ -146,6 +150,8 @@ def create_pipeline():
         model=model_upload_task.outputs["model"],
         endpoint=endpoint_create_task.outputs["endpoint"],
         deployed_model_display_name=MODEL_DISPLAY_NAME,
+        dedicated_resources_machine_type=SERVING_MACHINE_TYPE,
         dedicated_resources_min_replica_count=1,
         dedicated_resources_max_replica_count=1,
+        location=REGION,,
     )

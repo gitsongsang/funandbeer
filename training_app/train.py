@@ -232,13 +232,19 @@ def train(
         If True is passed, a job for hyperparameter tuning via Vertex AI is triggered.
         When the job is not triggered, the trained model saved in the desired path.
     """
+    print(f"""Current hyperparameter:
+        - factors: {factors}
+        - regularization: {regularization}
+        - iterations: {iterations}"""
+    )
+    
     baseline_topk, train_csr, valid_mat, valid_users = preprocess()
-
+    
     print("Model is training...")
     model = AlternatingLeastSquares(
-        factors=factors,
+        factors=int(factors),
         regularization=regularization,
-        iterations=iterations,
+        iterations=int(iterations),
         random_state=0,
     )
     model.fit(train_csr)
