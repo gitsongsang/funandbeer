@@ -153,5 +153,5 @@ def create_pipeline():
         dedicated_resources_machine_type=SERVING_MACHINE_TYPE,
         dedicated_resources_min_replica_count=1,
         dedicated_resources_max_replica_count=1,
-        location=REGION,,
+        location=REGION,
     )
